@@ -1,7 +1,5 @@
 # ESP32老人跌倒监测系统
 
-<img src="https://github.com/FunMax-Edward/ESP32-/blob/main/%E6%BC%94%E7%A4%BA/PC.png" width="700" alt="PC界面">
-<img src="https://github.com/FunMax-Edward/ESP32-/blob/main/%E6%BC%94%E7%A4%BA/Phone.png" width="300" alt="Phone界面">
 
 ## 项目简介
 
