@@ -1,0 +1,497 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>老人跌倒监测系统</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="data/modern.css" rel="stylesheet">
+            width: 40%;
+            max-width: 200px;
+            position: relative;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn {
+            padding: 12px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background-color: #1e88e5;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #f44336;
+            color: white;
+        }
+        .btn-success {
+            background-color: #4caf50;
+            color: white;
+        }
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .emergency-btn {
+            padding: 15px;
+            font-size: 18px;
+            background-color: #f44336;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .history-table th, .history-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        .history-table th {
+            background-color: #f5f5f5;
+        }
+        #command-list {
+            height: 150px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .command-item {
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .command-time {
+            font-size: 12px;
+            color: #888;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>老人跌倒监测系统</h1>
+        </div>
+
+        <!-- 状态面板 -->
+        <div id="status-panel" class="panel status-panel normal">
+            <span id="status-icon">✓</span>
+            <span id="status-text">老人状态正常</span>
+        </div>
+
+        <div class="grid">
+            <!-- 姿态监测面板 -->
+            <div class="panel">
+                <h2 class="panel-title">姿态监测</h2>
+                <div class="data-display">
+                    <div class="data-item">
+                        <div class="data-value" id="pitch-value">0°</div>
+                        <div class="data-label">俯仰角(Pitch)</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-value" id="roll-value">0°</div>
+                        <div class="data-label">横滚角(Roll)</div>
+                    </div>
+                </div>
+                <div class="gauge-container">
+                    <div class="gauge" id="pitch-gauge">
+                        <!-- 将由Chart.js渲染 -->
+                    </div>
+                    <div class="gauge" id="roll-gauge">
+                        <!-- 将由Chart.js渲染 -->
+                    </div>
+                </div>
+                <div class="data-display" id="monitoring-status">
+                    <div class="data-item">
+                        <div class="data-value" id="monitor-state">开启</div>
+                        <div class="data-label">监测状态</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-value" id="fallen-time">0秒</div>
+                        <div class="data-label">倒地时间</div>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" id="start-btn">开始监测</button>
+                    <button class="btn btn-danger" id="stop-btn">停止监测</button>
+                    <button class="btn btn-success" id="calibrate-btn">校准传感器</button>
+                </div>
+            </div>
+
+            <!-- 语音命令面板 -->
+            <div class="panel">
+                <h2 class="panel-title">语音命令</h2>
+                <div id="command-list">
+                    <div class="command-item">
+                        <div class="command-time">等待语音命令...</div>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" id="cmd-start">发送"开启监测"命令</button>
+                    <button class="btn btn-danger" id="cmd-stop">发送"关闭监测"命令</button>
+                </div>
+                <button class="btn emergency-btn" id="emergency-btn">紧急呼叫</button>
+            </div>
+
+            <!-- 历史记录面板 -->
+            <div class="panel">
+                <h2 class="panel-title">警报历史</h2>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>事件类型</th>
+                            <th>持续时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-data">
+                        <tr>
+                            <td colspan="3">暂无历史数据</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 系统信息面板 -->
+            <div class="panel">
+                <h2 class="panel-title">系统信息</h2>
+                <div class="data-display">
+                    <div class="data-item">
+                        <div class="data-value" id="wifi-status">已连接</div>
+                        <div class="data-label">WiFi状态</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-value" id="runtime">00:00:00</div>
+                        <div class="data-label">运行时间</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-value" id="last-calibration">未校准</div>
+                        <div class="data-label">最后校准时间</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            &copy; 2023 老人跌倒监测系统 - 基于ESP32和MPU6050
+        </div>
+    </div>
+
+    <!-- 引入Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        // 全局变量
+        let websocket;
+        let pitchChart, rollChart;
+        let fallHistory = [];
+        let commandHistory = [];
+        let monitoringActive = false;
+        let systemStartTime = new Date();
+        let lastCalibrationTime = null;
+        let fallenState = false;
+        let fallenStartTime = null;
+
+        // 初始化函数
+        window.addEventListener('load', onLoad);
+        
+        function onLoad() {
+            initUI();
+            initCharts();
+            initWebSocket();
+            initButtons();
+            updateSystemInfo();
+        }
+        
+        // 初始化UI元素
+        function initUI() {
+            // 初始化一些UI元素的状态
+            document.getElementById('status-panel').className = 'panel status-panel normal';
+            document.getElementById('status-icon').textContent = '✓';
+            document.getElementById('status-text').textContent = '老人状态正常';
+            
+            // 定期更新运行时间
+            setInterval(updateRuntime, 1000);
+        }
+        
+        // 初始化图表
+        function initCharts() {
+            // 初始化俯仰角和横滚角的仪表盘图表
+            // 这里使用Chart.js创建仪表盘，实现代码略
+            // 此处需要添加Chart.js的实际代码
+        }
+        
+        // 初始化WebSocket连接
+        function initWebSocket() {
+            let gateway = `ws://${window.location.hostname}/ws`;
+            websocket = new WebSocket(gateway);
+            websocket.onopen = onOpen;
+            websocket.onclose = onClose;
+            websocket.onmessage = onMessage;
+        }
+        
+        function onOpen() {
+            console.log('WebSocket连接已建立');
+        }
+        
+        function onClose() {
+            console.log('WebSocket连接已关闭');
+            // 尝试重新连接
+            setTimeout(initWebSocket, 2000);
+        }
+        
+        // 处理WebSocket消息
+        function onMessage(event) {
+            let data = JSON.parse(event.data);
+            
+            switch(data.type) {
+                case 'status':
+                    updateStatus(data.value);
+                    break;
+                case 'command':
+                    updateCommand(data.value);
+                    break;
+                case 'angles':
+                    updateAngles(data.pitch, data.roll);
+                    break;
+                case 'fallen_state':
+                    updateFallenState(data.fallen, data.duration);
+                    break;
+                case 'monitoring':
+                    updateMonitoringState(data.active);
+                    break;
+                case 'system_info':
+                    updateSystemInfoFromData(data);
+                    break;
+                default:
+                    console.log('收到未知类型的消息:', data);
+            }
+        }
+        
+        // 更新状态显示
+        function updateStatus(status) {
+            let statusPanel = document.getElementById('status-panel');
+            let statusIcon = document.getElementById('status-icon');
+            let statusText = document.getElementById('status-text');
+            
+            statusText.textContent = status;
+            
+            if (status.includes('警告') || status.includes('跌倒')) {
+                statusPanel.className = 'panel status-panel warning';
+                statusIcon.textContent = '⚠️';
+                // 播放警报声音
+                playAlertSound();
+            } else {
+                statusPanel.className = 'panel status-panel normal';
+                statusIcon.textContent = '✓';
+            }
+        }
+        
+        // 更新语音命令显示
+        function updateCommand(command) {
+            let commandList = document.getElementById('command-list');
+            let now = new Date();
+            let timeStr = now.toLocaleTimeString();
+            
+            commandHistory.unshift({
+                time: now,
+                command: command
+            });
+            
+            // 限制历史记录数量
+            if (commandHistory.length > 10) {
+                commandHistory.pop();
+            }
+            
+            // 更新UI
+            commandList.innerHTML = '';
+            commandHistory.forEach(item => {
+                let cmdTime = item.time.toLocaleTimeString();
+                commandList.innerHTML += `
+                <div class="command-item">
+                    <div class="command-content">${item.command}</div>
+                    <div class="command-time">${cmdTime}</div>
+                </div>`;
+            });
+        }
+        
+        // 更新角度显示
+        function updateAngles(pitch, roll) {
+            document.getElementById('pitch-value').textContent = `${pitch.toFixed(1)}°`;
+            document.getElementById('roll-value').textContent = `${roll.toFixed(1)}°`;
+            
+            // 更新图表
+            // updateCharts(pitch, roll);
+        }
+        
+        // 更新倒地状态
+        function updateFallenState(fallen, duration) {
+            fallenState = fallen;
+            
+            if (fallen) {
+                if (!fallenStartTime) {
+                    fallenStartTime = new Date();
+                }
+                document.getElementById('fallen-time').textContent = `${duration}秒`;
+                
+                // 如果是新的跌倒事件，添加到历史记录
+                if (duration === 0) {
+                    addFallHistory();
+                }
+            } else {
+                fallenStartTime = null;
+                document.getElementById('fallen-time').textContent = '0秒';
+            }
+        }
+        
+        // 更新监测状态
+        function updateMonitoringState(active) {
+            monitoringActive = active;
+            document.getElementById('monitor-state').textContent = active ? '开启' : '关闭';
+            document.getElementById('start-btn').disabled = active;
+            document.getElementById('stop-btn').disabled = !active;
+        }
+        
+        // 添加跌倒历史记录
+        function addFallHistory() {
+            let now = new Date();
+            fallHistory.unshift({
+                time: now,
+                type: '跌倒警报',
+                duration: 0
+            });
+            
+            // 限制历史记录数量
+            if (fallHistory.length > 10) {
+                fallHistory.pop();
+            }
+            
+            updateFallHistoryUI();
+        }
+        
+        // 更新跌倒历史记录UI
+        function updateFallHistoryUI() {
+            let historyTable = document.getElementById('history-data');
+            historyTable.innerHTML = '';
+            
+            if (fallHistory.length === 0) {
+                historyTable.innerHTML = '<tr><td colspan="3">暂无历史数据</td></tr>';
+                return;
+            }
+            
+            fallHistory.forEach(item => {
+                let timeStr = item.time.toLocaleString();
+                historyTable.innerHTML += `
+                <tr>
+                    <td>${timeStr}</td>
+                    <td>${item.type}</td>
+                    <td>${item.duration}秒</td>
+                </tr>`;
+            });
+        }
+        
+        // 更新系统运行时间
+        function updateRuntime() {
+            let now = new Date();
+            let diff = now - systemStartTime;
+            let hours = Math.floor(diff / 3600000);
+            let minutes = Math.floor((diff % 3600000) / 60000);
+            let seconds = Math.floor((diff % 60000) / 1000);
+            
+            let timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            document.getElementById('runtime').textContent = timeStr;
+        }
+        
+        // 更新系统信息
+        function updateSystemInfo() {
+            // 模拟更新WiFi状态
+            document.getElementById('wifi-status').textContent = '已连接';
+            
+            // 更新最后校准时间
+            if (lastCalibrationTime) {
+                document.getElementById('last-calibration').textContent = lastCalibrationTime.toLocaleTimeString();
+            }
+        }
+        
+        // 从服务器数据更新系统信息
+        function updateSystemInfoFromData(data) {
+            if (data.wifi_status) {
+                document.getElementById('wifi-status').textContent = data.wifi_status;
+            }
+        }
+        
+        // 初始化按钮事件
+        function initButtons() {
+            // 监测控制按钮
+            document.getElementById('start-btn').addEventListener('click', () => {
+                sendCommand('start_monitoring');
+            });
+            
+            document.getElementById('stop-btn').addEventListener('click', () => {
+                sendCommand('stop_monitoring');
+            });
+            
+            document.getElementById('calibrate-btn').addEventListener('click', () => {
+                sendCommand('calibrate');
+                lastCalibrationTime = new Date();
+                updateSystemInfo();
+            });
+            
+            // 语音命令模拟按钮
+            document.getElementById('cmd-start').addEventListener('click', () => {
+                sendCommand('voice_open');
+            });
+            
+            document.getElementById('cmd-stop').addEventListener('click', () => {
+                sendCommand('voice_close');
+            });
+            
+            // 紧急呼叫按钮
+            document.getElementById('emergency-btn').addEventListener('click', () => {
+                if (confirm('确定要发送紧急呼叫吗？')) {
+                    sendCommand('emergency');
+                    alert('紧急呼叫已发送！');
+                }
+            });
+        }
+        
+        // 发送命令到服务器
+        function sendCommand(command) {
+            if (websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    action: command
+                }));
+            } else {
+                console.error('WebSocket未连接，无法发送命令');
+            }
+        }
+        
+        // 播放警报声音
+        function playAlertSound() {
+            // 实现播放警报声音的代码
+            // 可以使用Web Audio API或HTML5 Audio元素
+        }
+    </script>
+</body>
+</html>
